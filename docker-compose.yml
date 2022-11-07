@@ -1,0 +1,51 @@
+version: '3'
+
+volumes:
+    letsencrypt:
+    nextcloud:
+
+services: 
+    proxy:
+        image: staticfloat/nginx-certbot
+        ports:
+            - 8060:80
+            - 4443:443
+        environment: 
+            CERTBOT_EMAIL: wendellxj@hotmail.com
+            ENVSUBST_VARS: FQDN
+            FQDN: tecws.com.br
+        volumes:
+            - ./conf.d:/etc/nginx/user.conf.d:ro
+            - letsencrypt:/etc/letsencrypt
+            - nextcloud:/var/www/html
+        restart: unless-stopped
+
+    db:
+        image: mariadb
+        environment:
+            - MYSQL_ROOT_PASSWORD=Password1234!@
+            - MYSQL_PASSWORD=Password1234!@
+            - MYSQL_DATABASE=nextcloud
+            - MYSQL_USER=nextcloud
+        volumes: 
+            - ./mysql:/var/lib/mysql
+        restart: unless-stopped
+    
+    app:
+        image: nextcloud:fpm
+        volumes:
+            - nextcloud:/var/www/html
+            - ./app/data:/var/www/html/data
+            - ./app/config:/var/www/html/config
+        restart: unless-stopped
+
+    cron:
+        image: rcdailey/nextcloud-cronjob
+        environment:
+            - NEXTCLOUD_CRON_MINUTE_INTERVAL=15
+            - NEXTCLOUD_CONTAINER_NAME=app
+            - NEXTCLOUD_PROJECT_NAME=nextcloud
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock:ro
+            - /etc/localtime:/etc/localtime:ro
+        restart: always
